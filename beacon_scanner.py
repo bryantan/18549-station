@@ -60,6 +60,7 @@ class BeaconScanner:
         # us_thread.start()
         # ui_thread.start()
         #while(1):
+        os.system('sudo chmod +x /root/station/blink_led.sh')
         os.system('sudo /root/station/blink_led.sh')
          #   time.sleep(1)
         
