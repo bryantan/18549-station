@@ -2,6 +2,7 @@ import subprocess
 import threading
 import getpass
 import signal
+import json
 import sys
 import os
 
@@ -58,7 +59,7 @@ class BeaconScanner:
                             rssi = int(cur_packet[-2:], 16) - 256
                             self.uuid_dict[uuid] = rssi
                             f = open('dict', 'w')
-                            f.write(str(self.uuid_dict))
+                            f.write(json.dumps(self.uuid_dict))
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
 
                     # start tracking of new packet

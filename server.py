@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-import ast
+import json
 #from beacon_scanner import BeaconScanner
 
 app = Flask(__name__)
@@ -8,8 +8,7 @@ app = Flask(__name__)
 @app.route('/get_beacons')
 def get_beacons():
     f = open('dict', 'r')
-    uuid_dict = ast.literal_eval(f.read())
-    return jsonify(**uuid_dict)
+    return jsonify(json.loads(f.read()))
     #Zreturn "Hello World!"
 
 if __name__ == '__main__':
