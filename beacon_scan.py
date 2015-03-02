@@ -17,6 +17,7 @@ cur_packet = ""
 ibeacon_id = "1E 02 01 06 1A FF 4C 00 02 15"
 uuid_dict = dict()
 
+
 # kill processes on exiting of program
 def signal_handler(signal, frame):
     print('You pressed Ctrl+C!')
@@ -54,4 +55,3 @@ finally:
     os.killpg(scan.pid, signal.SIGTERM)
     os.killpg(dump.pid, signal.SIGTERM)
     print("exiting...")
-
