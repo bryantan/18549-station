@@ -84,7 +84,7 @@ class BeaconScanner:
         data = {'data': json.dumps(self.uuid_dict)}
         self.uuid_dict.clear()
         self.lock.release()
-        print "POST data: " + data
+        print "POST data: " + str(data)
         requests.post('http://128.237.119.104:8000/newData', data=data)
 
 BeaconScanner()
