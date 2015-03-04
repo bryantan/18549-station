@@ -3,5 +3,6 @@
 *.pyc
 
 dict
+settings.conf
 
 venv/
