@@ -110,7 +110,7 @@ class BeaconScanner:
                 return
 
             # read settings from file and update the dict
-            f = open('settings.conf', 'r')
+            f = open('settings.conf', 'r', os.O_NONBLOCK)
             settings = json.loads(f.read())
             self.settings_lock.acquire()
             self.settings_dict = settings

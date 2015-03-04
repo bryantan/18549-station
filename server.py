@@ -1,7 +1,8 @@
 from flask import Flask, jsonify, request
+# from beacon_scanner import BeaconScanner
 
 import json
-# from beacon_scanner import BeaconScanner
+import os
 
 app = Flask(__name__)
 
@@ -17,8 +18,9 @@ app = Flask(__name__)
 def set_settings():
     settings = json.loads(request.form['data'])
     # TODO: check settings dict
-    f = open('settings.conf', 'w')
+    f = open('settings.conf', 'w', os.O_NONBLOCK)
     f.write(json.dumps(settings))
+    f.flush()
     return "set"
 
 if __name__ == '__main__':
