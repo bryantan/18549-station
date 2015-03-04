@@ -1,6 +1,7 @@
 import subprocess
 import threading
-import getpass
+import requests
+# import getpass
 import signal
 import json
 import sys
@@ -15,13 +16,14 @@ class BeaconScanner:
         # TODO: catch errors of hcitool
         # password = getpass.getpass()
         scanargs = "sudo hcitool lescan --duplicates".split(" ")
-        dumpargs = "sudo hcidump -x -R -i hci1".split(" ")
+        dumpargs = "sudo hcidump -x -R -i hci0".split(" ")
         devnull = open(os.devnull, 'wb')
         self.scan = subprocess.Popen(scanargs, stdin=subprocess.PIPE, stdout=devnull)
         # self.scan.stdin.write(password + '\n')
         # self.scan.stdin.close()
         self.dump = subprocess.Popen(dumpargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.uuid_dict = dict()
+        self.uuid_dict = {}
+        self.lock = threading.Lock()
 
         # kill processes on exiting of program
         def signal_handler(signal, frame):
@@ -33,7 +35,9 @@ class BeaconScanner:
 
         # start new thread to receive packets
         rp_thread = threading.Thread(target=self.receive_packets, args=())
+        sp_thread = threading.Thread(target=self.send_packets, args=())
         rp_thread.start()
+        sp_thread.start()
 
     def get_dict(self):
         return self.uuid_dict
@@ -57,9 +61,10 @@ class BeaconScanner:
                             uuid = cur_packet[uuid_start:uuid_end].replace(" ", "")
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
+                            # lock for thread safety
+                            self.lock.acquire()
                             self.uuid_dict[uuid] = rssi
-                            f = open('dict', 'w')
-                            f.write(json.dumps(self.uuid_dict))
+                            self.lock.release()
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
 
                     # start tracking of new packet
@@ -71,5 +76,15 @@ class BeaconScanner:
             os.killpg(self.scan.pid, signal.SIGTERM)
             os.killpg(self.dump.pid, signal.SIGTERM)
             print("exiting...")
+
+    def send_packets(self):
+        threading.Timer(5.0, self.send_packets).start()
+        self.lock.acquire()
+        # data = {'data': json.dumps(self.uuid_dict)}
+        data = {'data': json.dumps(self.uuid_dict)}
+        self.uuid_dict.clear()
+        self.lock.release()
+        print "POST data: " + data
+        requests.post('http://128.237.119.104:8000/newData', data=data)
 
 BeaconScanner()
