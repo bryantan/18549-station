@@ -7,7 +7,7 @@ import json
 import sys
 import os
 
-ibeacon_id = "1E 02 01 06 1A FF 4C 00 02 15"
+from constants import *
 
 
 class BeaconScanner:
@@ -57,9 +57,9 @@ class BeaconScanner:
                     # print(">>> " + cur_packet)
                     # check for ibeacon advertisement
                     # http://www.warski.org/blog/2014/01/how-ibeacons-work/
-                    index = cur_packet.find(ibeacon_id)
+                    index = cur_packet.find(IBEACON_ID)
                     if index != -1:
-                        uuid_start = index + len(ibeacon_id) + 1
+                        uuid_start = index + len(IBEACON_ID) + 1
                         # 47 is the length of the UUID
                         uuid_end = uuid_start + 47
                         # check if complete uuid is received
@@ -84,8 +84,7 @@ class BeaconScanner:
             print("exiting...")
 
     def send_packets(self):
-        # TODO: move to constant
-        threading.Timer(5.0, self.send_packets).start()
+        threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
         try:
             # dump received packets and send them to webserver
             json_dict = json.dumps(self.uuid_dict)
@@ -96,21 +95,20 @@ class BeaconScanner:
             self.uuid_dict.clear()
             self.uuid_lock.release()
             print "POST data: " + str(data)
-            requests.post('http://128.237.204.130:8000/newData', data=data)
+            requests.post(WEBSERVER_IP + '/newData', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
     def update_settings(self):
-        # TODO: move to constant
-        threading.Timer(60.0, self.update_settings).start()
+        threading.Timer(UPDATE_SETTINGS_PERIOD, self.update_settings).start()
         try:
             # no need to update settings if the file has not changed
-            statbuf = os.stat('settings.conf')
+            statbuf = os.stat(SETTINGS_FILENAME)
             if statbuf.st_mtime == self.settings_last_updated:
                 return
 
             # read settings from file and update the dict
-            f = open('settings.conf', 'r', os.O_NONBLOCK)
+            f = open(SETTINGS_FILENAME, 'r', os.O_NONBLOCK)
             settings = json.loads(f.read())
             self.settings_lock.acquire()
             self.settings_dict = settings
