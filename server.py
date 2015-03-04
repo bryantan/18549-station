@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+
 import json
 # from beacon_scanner import BeaconScanner
 
@@ -12,12 +13,13 @@ app = Flask(__name__)
 #     #Zreturn "Hello World!"
 
 
-@app.route('/send-settings', methods=['POST'])
-def send_settings():
+@app.route('/set-settings', methods=['POST'])
+def set_settings():
     settings = json.loads(request.form['data'])
+    # TODO: check settings dict
     f = open('settings.conf', 'w')
     f.write(json.dumps(settings))
-    return
+    return "set"
 
 if __name__ == '__main__':
     app.debug = True
