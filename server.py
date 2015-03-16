@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request
 import json
 import os
 
-from constants import SETTINGS_FILENAME
+from constants import SETTINGS_FILENAME, ID_FILENAME
 # from beacon_scanner import BeaconScanner
 
 app = Flask(__name__)
@@ -25,6 +25,16 @@ def set_settings():
     f.flush()
     return "set"
 
+
+@app.route('/set-id', methods=['POST'])
+def set_id():
+    settings = json.loads(request.form['data'])
+    # TODO: check settings dict
+    f = open(ID_FILENAME, 'w', os.O_NONBLOCK)
+    f.write(json.dumps(settings))
+    f.flush()
+    return "set"
+
 if __name__ == '__main__':
     app.debug = True
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=8000)

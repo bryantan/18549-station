@@ -16,7 +16,7 @@ class BeaconScanner:
         # TODO: catch errors of hcitool
         # password = getpass.getpass()
         scanargs = "sudo hcitool lescan --duplicates".split(" ")
-        dumpargs = "sudo hcidump -x -R -i hci0".split(" ")
+        dumpargs = "sudo hcidump -x -R -i hci1".split(" ")
         devnull = open(os.devnull, 'wb')
         self.scan = subprocess.Popen(scanargs, stdin=subprocess.PIPE, stdout=devnull)
         # self.scan.stdin.write(password + '\n')
@@ -27,6 +27,7 @@ class BeaconScanner:
         self.uuid_lock = threading.Lock()
         self.settings_lock = threading.Lock()
         self.settings_last_updated = None
+        self.id = None
 
         # kill processes on exiting of program
         def signal_handler(signal, frame):
@@ -41,9 +42,11 @@ class BeaconScanner:
         rp_thread = threading.Thread(target=self.receive_packets, args=())
         sp_thread = threading.Thread(target=self.send_packets, args=())
         us_thread = threading.Thread(target=self.update_settings, args=())
+        ui_thread = threading.Thread(target=self.update_id, args=())
         rp_thread.start()
         sp_thread.start()
         us_thread.start()
+        ui_thread.start()
 
     def get_dict(self):
         return self.uuid_dict
@@ -90,7 +93,10 @@ class BeaconScanner:
             json_dict = json.dumps(self.uuid_dict)
             self.uuid_lock.acquire()
             # data = {'data': json.dumps(self.uuid_dict)}
-            data = {'data': json_dict}
+            if self.id is None:
+                data = {'data': json_dict}
+            else:
+                data = {'id': self.id, 'data': json_dict}
             # clear dict after sending to ensure fresh values
             self.uuid_dict.clear()
             self.uuid_lock.release()
@@ -117,6 +123,21 @@ class BeaconScanner:
             self.settings_last_updated = statbuf.st_mtime
         except Exception as e:
             print "Unable to load settings: " + str(e)
+
+    def update_id(self):
+        # no need to update settings if there is an ID
+        if self.id is not None:
+            return
+
+        threading.Timer(UPDATE_SETTINGS_PERIOD, self.update_id).start()
+        try:
+            # read ID from file and update the ID variable
+            f = open(ID_FILENAME, 'r', os.O_NONBLOCK)
+            id_object = json.loads(f.read())
+            self.id = id_object['id']
+            print "New ID: " + str(self.id)
+        except Exception as e:
+            print "Unable to load ID: " + str(e)
 
     def get_setting(self, key):
         # safely get setting with locking

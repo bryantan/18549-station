@@ -4,5 +4,6 @@
 
 dict
 settings.conf
+id.conf
 
 venv/
