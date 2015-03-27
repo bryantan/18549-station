@@ -16,7 +16,7 @@ class BeaconScanner:
         # TODO: catch errors of hcitool
         # password = getpass.getpass()
         scanargs = "sudo hcitool lescan --duplicates".split(" ")
-        dumpargs = "sudo hcidump -x -R -i hci1".split(" ")
+        dumpargs = "sudo hcidump -x -R -i {}".format(HCI_DEVICE).split(" ")
         devnull = open(os.devnull, 'wb')
         self.scan = subprocess.Popen(scanargs, stdin=subprocess.PIPE, stdout=devnull)
         # self.scan.stdin.write(password + '\n')
