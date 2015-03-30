@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 
 import subprocess
+import threading
 import json
 import os
 
@@ -70,11 +71,13 @@ def broadcast_uuid():
                                               COMPANY_ID,
                                               PACKET_ID,
                                               formatted_uuid)
-    stopargs = "sudo hciconfig {} noleadv".format(HCI_DEVICE)
+    stopargs = "sudo hciconfig {} noleadv".format(HCI_DEVICE).split(" ")
     broadcastargs = "hcitool -i {} cmd 0x08 0x0008 {} {}".format(HCI_DEVICE,
                                                                  chr(packet_len),
-                                                                 packet)
-    startargs = "sudo hciconfig {} leadv".format(HCI_DEVICE)
+                                                                 packet) \
+                                                         .split(" ")
+    startargs = "sudo hciconfig {} leadv".format(HCI_DEVICE).split(" ")
+    devnull = open(os.devnull, 'wb')
     subprocess.Popen(stopargs, stdin=subprocess.PIPE, stdout=devnull)
     subprocess.Popen(broadcastargs, stdin=subprocess.PIPE, stdout=devnull)
     subprocess.Popen(startargs, stdin=subprocess.PIPE, stdout=devnull)
@@ -83,6 +86,8 @@ def broadcast_uuid():
     def stop_broadcast(): subprocess.Popen(stopargs, stdin=subprocess.PIPE, stdout=devnull)
     threading.Timer(BROADCAST_PACKET_PERIOD, stop_broadcast).start()
 
+    return "sent"
+
 if __name__ == '__main__':
     app.debug = True
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8001)
