@@ -60,26 +60,27 @@ def broadcast_uuid():
     formatted_uuid = ""
     for i in xrange(0, len(uuid), 2):
         formatted_uuid += uuid[i:i+2] + " "
-    formatted_uuid.strip()
+    formatted_uuid = formatted_uuid.strip()
     """
     14 comes from: 9 bytes of packet header
                    4 bytes of major/minor
                    1 byte of transmission power
     """
     packet_len = 14 + len(uuid)/2
-    packet = "02 01 06 {} FF {} {} {}".format(chr(packet_len-4),
-                                              COMPANY_ID,
-                                              PACKET_ID,
-                                              formatted_uuid)
+    packet = "02 01 06 {} FF {} {} {} {}".format(str(hex(packet_len-4))[2:],
+                                                 COMPANY_ID,
+                                                 PACKET_ID,
+                                                 formatted_uuid,
+                                                 "00 00 00 00 c5 00")
     stopargs = "sudo hciconfig {} noleadv".format(HCI_DEVICE).split(" ")
-    broadcastargs = "hcitool -i {} cmd 0x08 0x0008 {} {}".format(HCI_DEVICE,
-                                                                 chr(packet_len),
-                                                                 packet) \
-                                                         .split(" ")
+    bcargs = "sudo hcitool -i {} cmd 0x08 0x0008 {} {}".format(HCI_DEVICE,
+                                                               str(hex(packet_len))[2:],
+                                                               packet) \
+                                                       .split(" ")
     startargs = "sudo hciconfig {} leadv".format(HCI_DEVICE).split(" ")
     devnull = open(os.devnull, 'wb')
     subprocess.Popen(stopargs, stdin=subprocess.PIPE, stdout=devnull)
-    subprocess.Popen(broadcastargs, stdin=subprocess.PIPE, stdout=devnull)
+    subprocess.Popen(bcargs, stdin=subprocess.PIPE, stdout=devnull)
     subprocess.Popen(startargs, stdin=subprocess.PIPE, stdout=devnull)
 
     # limit broadcast packet time
