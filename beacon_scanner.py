@@ -23,6 +23,7 @@ class BeaconScanner:
         # self.scan.stdin.close()
         self.dump = subprocess.Popen(dumpargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.uuid_dict = {}
+        self.sent_uuids = {}
         self.settings_dict = {}
         self.uuid_lock = threading.Lock()
         self.settings_lock = threading.Lock()
@@ -89,17 +90,32 @@ class BeaconScanner:
     def send_packets(self):
         threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
         try:
+            # remove values in the dict that are within the threshold range
+            new_sent = {}
+            self.uuid_lock.acquire()
+            for uuid, rssi in self.uuid_dict:
+                print str(uuid) + str(rssi)
+                if uuid in self.sent_uuids and \
+                   rssi <= self.sent_uuids[uuid] + RSSI_THRESHOLD and \
+                   rssi >= self.sent_uuids[uuid] - RSSI_THRESHOLD:
+                    self.uuid_dict.pop(uuid, None)
+                else:
+                    new_sent[uuid] = rssi
+            # do not send if there are no updates
+            if len(self.uuid_dict) == 0:
+                self.uuid_lock.release()
+                return
             # dump received packets and send them to webserver
             json_dict = json.dumps(self.uuid_dict)
-            self.uuid_lock.acquire()
-            # data = {'data': json.dumps(self.uuid_dict)}
+            # clear dict after sending to ensure fresh values
+            self.uuid_dict.clear()
+            self.uuid_lock.release()
+            # update sent uuids
+            self.sent_uuids = new_sent
             if self.id is None:
                 data = {'data': json_dict}
             else:
                 data = {'id': self.id, 'data': json_dict}
-            # clear dict after sending to ensure fresh values
-            self.uuid_dict.clear()
-            self.uuid_lock.release()
             print "POST data: " + str(data)
             requests.post(WEBSERVER_IP + '/newData', data=data)
         except Exception as e:
