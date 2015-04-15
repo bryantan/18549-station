@@ -93,7 +93,7 @@ class BeaconScanner:
             # remove values in the dict that are within the threshold range
             new_sent = {}
             self.uuid_lock.acquire()
-            for uuid, rssi in self.uuid_dict:
+            for uuid, rssi in self.uuid_dict.iteritems():
                 print str(uuid) + str(rssi)
                 if uuid in self.sent_uuids and \
                    rssi <= self.sent_uuids[uuid] + RSSI_THRESHOLD and \
