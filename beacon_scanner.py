@@ -91,25 +91,22 @@ class BeaconScanner:
         threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
         try:
             # remove values in the dict that are within the threshold range
-            new_sent = {}
+            new_sent = self.sent_uuids.copy()
             self.uuid_lock.acquire()
             for uuid, rssi in self.uuid_dict.iteritems():
                 print str(uuid) + str(rssi)
                 if uuid in self.sent_uuids and \
                    rssi <= self.sent_uuids[uuid] + RSSI_THRESHOLD and \
                    rssi >= self.sent_uuids[uuid] - RSSI_THRESHOLD:
-                    self.uuid_dict.pop(uuid, None)
-                else:
-                    new_sent[uuid] = rssi
-            # do not send if there are no updates
-            if len(self.uuid_dict) == 0:
-                self.uuid_lock.release()
-                return
-            # dump received packets and send them to webserver
-            json_dict = json.dumps(self.uuid_dict)
+                    new_sent.pop(uuid, None)
             # clear dict after sending to ensure fresh values
             self.uuid_dict.clear()
             self.uuid_lock.release()
+            # do not send if there are no updates
+            if len(new_sent) == 0:
+                return
+            # dump received packets and send them to webserver
+            json_dict = json.dumps(new_sent)
             # update sent uuids
             self.sent_uuids = new_sent
             if self.id is None:
