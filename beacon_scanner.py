@@ -41,11 +41,11 @@ class BeaconScanner:
         # start new threads to receive packets,
         # send packets, and update settings
         rp_thread = threading.Thread(target=self.receive_packets, args=())
-        sp_thread = threading.Thread(target=self.send_packets, args=())
+        # sp_thread = threading.Thread(target=self.send_packets, args=())
         us_thread = threading.Thread(target=self.update_settings, args=())
         ui_thread = threading.Thread(target=self.update_id, args=())
         rp_thread.start()
-        sp_thread.start()
+        # sp_thread.start()
         us_thread.start()
         ui_thread.start()
 
@@ -71,10 +71,28 @@ class BeaconScanner:
                             uuid = cur_packet[uuid_start:uuid_end].replace(" ", "")
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
-                            # lock for thread safety
-                            self.uuid_lock.acquire()
-                            self.uuid_dict[uuid] = rssi
-                            self.uuid_lock.release()
+                            # send if beyond threshold
+                            if uuid in self.uuid_dict and \
+                               rssi <= self.uuid_dict[uuid] + RSSI_THRESHOLD and \
+                               rssi >= self.uuid_dict[uuid] - RSSI_THRESHOLD:
+                                pass
+                            else:
+                                try:
+                                    # lock for thread safety
+                                    self.uuid_lock.acquire()
+                                    self.uuid_dict[uuid] = rssi
+                                    self.uuid_lock.release()
+                                    # send post request to server
+                                    json_dict = json.dumps({uuid: rssi})
+                                    if self.id is None:
+                                        data = {'data': json_dict}
+                                    else:
+                                        data = {'id': self.id,
+                                                'data': json_dict}
+                                    print "POST data: " + str(data)
+                                    requests.post(WEBSERVER_IP + '/newData', data=data)
+                                except Exception as e:
+                                    print "Unable to post data: " + str(e)
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
 
                     # start tracking of new packet
