@@ -91,7 +91,7 @@ class BeaconScanner:
         threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
         try:
             # remove values in the dict that are within the threshold range
-            new_sent = self.sent_uuids.copy()
+            new_sent = self.uuid_dict.copy()
             self.uuid_lock.acquire()
             for uuid, rssi in self.uuid_dict.iteritems():
                 print str(uuid) + str(rssi)
