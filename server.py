@@ -25,16 +25,24 @@ def set_settings():
     f = open(SETTINGS_FILENAME, 'w', os.O_NONBLOCK)
     f.write(json.dumps(settings))
     f.flush()
+    f.close()
+    try:
+        if 'pollingFreq' in settings:
+            contants.SEND_PACKET_PERIOD = int(settings['pollingFreq'])
+    except:
+        return "error"
     return "set"
 
 
 @app.route('/set-id', methods=['POST'])
 def set_id():
     settings = json.loads(request.form['data'])
+    print settings
     # TODO: check settings dict
     f = open(ID_FILENAME, 'w', os.O_NONBLOCK)
     f.write(json.dumps(settings))
     f.flush()
+    f.close()
     return "set"
 
 
