@@ -42,10 +42,12 @@ class BeaconScanner:
         # send packets, and update settings
         rp_thread = threading.Thread(target=self.receive_packets, args=())
         # sp_thread = threading.Thread(target=self.send_packets, args=())
+        sh_thread = threading.Thread(target=self.send_heartbeat, args=())
         us_thread = threading.Thread(target=self.update_settings, args=())
         ui_thread = threading.Thread(target=self.update_id, args=())
         rp_thread.start()
         # sp_thread.start()
+        sh_thread.start()
         us_thread.start()
         ui_thread.start()
 
@@ -133,6 +135,15 @@ class BeaconScanner:
                 data = {'id': self.id, 'data': json_dict}
             print "POST data: " + str(data)
             requests.post(WEBSERVER_IP + '/newData', data=data)
+        except Exception as e:
+            print "Unable to post data: " + str(e)
+
+    def send_heartbeat(self):
+        threading.Timer(SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
+        try:
+            if self.id is not None:
+                data = {'id': self.id}
+                requests.post(WEBSERVER_IP + '/sendHeartbeat', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
