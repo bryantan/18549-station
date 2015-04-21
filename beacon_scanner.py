@@ -24,6 +24,7 @@ class BeaconScanner:
         self.dump = subprocess.Popen(dumpargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.uuid_dict = {}
         self.sent_uuids = {}
+        self.last_rssi_values = [-70]*NUMBER_LAST_RSSI_VALUES
         self.settings_dict = {}
         self.uuid_lock = threading.Lock()
         self.settings_lock = threading.Lock()
@@ -53,6 +54,13 @@ class BeaconScanner:
 
     def get_dict(self):
         return self.uuid_dict
+    
+    def get_average_rssi(self, new_rssi):
+        # Update array of last rssi values
+        self.last_rssi_values = [new_rssi] + self.last_rssi_values[:-1]
+        # Get the average of the last rssi values
+        average_rssi = reduce(lambda x,y: x+y, self.last_rssi_values) / float(len(self.last_rssi_values))
+        return int(average_rssi)
 
     def receive_packets(self):
         cur_packet = ""
@@ -73,19 +81,20 @@ class BeaconScanner:
                             uuid = cur_packet[uuid_start:uuid_end].replace(" ", "")
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
+                            average_rssi = self.get_average_rssi(rssi)
                             # send if beyond threshold
                             if uuid in self.uuid_dict and \
-                               rssi <= self.uuid_dict[uuid] + RSSI_THRESHOLD and \
-                               rssi >= self.uuid_dict[uuid] - RSSI_THRESHOLD:
+                               average_rssi <= self.uuid_dict[uuid] * (1 - RSSI_THRESHOLD) and \
+                               average_rssi >= self.uuid_dict[uuid] * (1 + RSSI_THRESHOLD):
                                 pass
                             else:
                                 try:
                                     # lock for thread safety
                                     self.uuid_lock.acquire()
-                                    self.uuid_dict[uuid] = rssi
+                                    self.uuid_dict[uuid] = average_rssi
                                     self.uuid_lock.release()
                                     # send post request to server
-                                    json_dict = json.dumps({uuid: rssi})
+                                    json_dict = json.dumps({uuid: average_rssi})
                                     if self.id is None:
                                         data = {'data': json_dict}
                                     else:
@@ -105,7 +114,7 @@ class BeaconScanner:
         finally:
             os.killpg(self.scan.pid, signal.SIGTERM)
             os.killpg(self.dump.pid, signal.SIGTERM)
-            print("exiting...")
+            print("exiting...") 
 
     def send_packets(self):
         threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
