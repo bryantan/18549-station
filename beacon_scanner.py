@@ -157,8 +157,8 @@ class BeaconScanner:
 
     def update_id(self):
         # no need to update settings if there is an ID
-        if self.id is not None:
-            return
+        # if self.id is not None:
+        #      return
 
         threading.Timer(UPDATE_SETTINGS_PERIOD, self.update_id).start()
         try:
