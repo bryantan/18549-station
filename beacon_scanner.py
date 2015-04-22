@@ -7,7 +7,7 @@ import json
 import sys
 import os
 
-from constants import *
+import constants
 
 
 class BeaconScanner:
@@ -16,12 +16,17 @@ class BeaconScanner:
         # TODO: catch errors of hcitool
         # password = getpass.getpass()
         scanargs = "sudo hcitool lescan --duplicates".split(" ")
-        dumpargs = "sudo hcidump -x -R -i {}".format(HCI_DEVICE).split(" ")
+        dumpargs = "sudo hcidump -x -R -i {}".format(constants.HCI_DEVICE) \
+                                             .split(" ")
         devnull = open(os.devnull, 'wb')
-        self.scan = subprocess.Popen(scanargs, stdin=subprocess.PIPE, stdout=devnull)
+        self.scan = subprocess.Popen(scanargs,
+                                     stdin=subprocess.PIPE,
+                                     stdout=devnull)
         # self.scan.stdin.write(password + '\n')
         # self.scan.stdin.close()
-        self.dump = subprocess.Popen(dumpargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.dump = subprocess.Popen(dumpargs,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
         self.uuid_dict = {}
         self.sent_uuids = {}
         self.last_rssi_values = {}
@@ -54,11 +59,11 @@ class BeaconScanner:
 
     def get_dict(self):
         return self.uuid_dict
-    
+
     def get_average_rssi(self, uuid, new_rssi):
-        if not uuid in self.last_rssi_values:
+        if uuid not in self.last_rssi_values:
             # Initialize RSSI values
-            self.last_rssi_values[uuid] = [-70]*NUMBER_LAST_RSSI_VALUES
+            self.last_rssi_values[uuid] = [-70]*constants.NUMBER_LAST_RSSI_VALUES
         # Update array of last rssi values
         self.last_rssi_values[uuid] = [new_rssi] + self.last_rssi_values[uuid][:-1]
         # Get the average of the last rssi values
@@ -74,9 +79,9 @@ class BeaconScanner:
                     # print(">>> " + cur_packet)
                     # check for ibeacon advertisement
                     # http://www.warski.org/blog/2014/01/how-ibeacons-work/
-                    index = cur_packet.find(IBEACON_ID)
+                    index = cur_packet.find(constants.IBEACON_ID)
                     if index != -1:
-                        uuid_start = index + len(IBEACON_ID) + 1
+                        uuid_start = index + len(constants.IBEACON_ID) + 1
                         # 47 is the length of the UUID
                         uuid_end = uuid_start + 47
                         # check if complete uuid is received
@@ -87,8 +92,8 @@ class BeaconScanner:
                             average_rssi = self.get_average_rssi(uuid, rssi)
                             # send if beyond threshold
                             if uuid in self.uuid_dict and \
-                               average_rssi <= self.uuid_dict[uuid] * (1 - RSSI_THRESHOLD) and \
-                               average_rssi >= self.uuid_dict[uuid] * (1 + RSSI_THRESHOLD):
+                               average_rssi <= self.uuid_dict[uuid] * (1 - constants.RSSI_THRESHOLD) and \
+                               average_rssi >= self.uuid_dict[uuid] * (1 + constants.RSSI_THRESHOLD):
                                 pass
                             else:
                                 try:
@@ -104,10 +109,32 @@ class BeaconScanner:
                                         data = {'id': self.id,
                                                 'data': json_dict}
                                     print "POST data: " + str(data)
-                                    requests.post(WEBSERVER_IP + '/newData', data=data)
+                                    requests.post(constants.WEBSERVER_IP + '/newData', data=data)
                                 except Exception as e:
                                     print "Unable to post data: " + str(e)
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
+
+                    # look for IP broadcast packet
+                    index = cur_packet.find("FF {} {}".format(constants.COMPANY_ID,
+                                                              constants.IP_PACKET_ID))
+                    if cur_packet.find("02 01 06") != -1 and index != -1:
+                        # 15 is the length of FF + company ID + ip packet ID
+                        ip_start = index + 15
+                        ip_end = cur_packet.find(constants.IP_PACKET_END)
+                        server_ip_str = cur_packet[ip_start:ip_end].strip()
+                        # convert into string representing IP
+                        server_ip = server_ip_str.replace(" ", "") \
+                                                 .decode("hex")
+                        server_ip = "http://{}:3000".format(server_ip)
+                        # write new IP into constants file
+                        f = open(constants.CONSTANTS_FILENAME, 'w+', os.O_NONBLOCK)
+                        constants_content = f.read()
+                        constants_content.replace(constants.WEBSERVER_IP,
+                                                  server_ip)
+                        f.write(constants_content)
+                        f.close()
+                        # update variable
+                        constants.WEBSERVER_IP = server_ip
 
                     # start tracking of new packet
                     cur_packet = line.strip()
@@ -120,7 +147,7 @@ class BeaconScanner:
             print("exiting...") 
 
     def send_packets(self):
-        threading.Timer(SEND_PACKET_PERIOD, self.send_packets).start()
+        threading.Timer(constants.SEND_PACKET_PERIOD, self.send_packets).start()
         try:
             # remove values in the dict that are within the threshold range
             new_sent = self.uuid_dict.copy()
@@ -128,8 +155,8 @@ class BeaconScanner:
             for uuid, rssi in self.uuid_dict.iteritems():
                 print str(uuid) + str(rssi)
                 if uuid in self.sent_uuids and \
-                   rssi <= self.sent_uuids[uuid] + RSSI_THRESHOLD and \
-                   rssi >= self.sent_uuids[uuid] - RSSI_THRESHOLD:
+                   rssi <= self.sent_uuids[uuid] + constants.RSSI_THRESHOLD and \
+                   rssi >= self.sent_uuids[uuid] - constants.RSSI_THRESHOLD:
                     new_sent.pop(uuid, None)
             # clear dict after sending to ensure fresh values
             self.uuid_dict.clear()
@@ -146,29 +173,29 @@ class BeaconScanner:
             else:
                 data = {'id': self.id, 'data': json_dict}
             print "POST data: " + str(data)
-            requests.post(WEBSERVER_IP + '/newData', data=data)
+            requests.post(constants.WEBSERVER_IP + '/newData', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
     def send_heartbeat(self):
-        threading.Timer(SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
+        threading.Timer(constants.SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
         try:
             if self.id is not None:
                 data = {'id': self.id}
-                requests.post(WEBSERVER_IP + '/sendHeartbeat', data=data)
+                requests.post(constants.WEBSERVER_IP + '/sendHeartbeat', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
     def update_settings(self):
-        threading.Timer(UPDATE_SETTINGS_PERIOD, self.update_settings).start()
+        threading.Timer(constants.UPDATE_SETTINGS_PERIOD, self.update_settings).start()
         try:
             # no need to update settings if the file has not changed
-            statbuf = os.stat(SETTINGS_FILENAME)
+            statbuf = os.stat(constants.SETTINGS_FILENAME)
             if statbuf.st_mtime == self.settings_last_updated:
                 return
 
             # read settings from file and update the dict
-            f = open(SETTINGS_FILENAME, 'r', os.O_NONBLOCK)
+            f = open(constants.SETTINGS_FILENAME, 'r', os.O_NONBLOCK)
             settings = json.loads(f.read())
             self.settings_lock.acquire()
             self.settings_dict = settings
@@ -183,10 +210,10 @@ class BeaconScanner:
         # if self.id is not None:
         #      return
 
-        threading.Timer(UPDATE_SETTINGS_PERIOD, self.update_id).start()
+        threading.Timer(constants.UPDATE_SETTINGS_PERIOD, self.update_id).start()
         try:
             # read ID from file and update the ID variable
-            f = open(ID_FILENAME, 'r', os.O_NONBLOCK)
+            f = open(constants.ID_FILENAME, 'r', os.O_NONBLOCK)
             id_object = json.loads(f.read())
             self.id = id_object['id']
             print "New ID: " + str(self.id)

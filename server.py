@@ -77,7 +77,7 @@ def broadcast_uuid():
     packet_len = 14 + len(uuid)/2
     packet = "02 01 06 {} FF {} {} {} {}".format(str(hex(packet_len-4))[2:],
                                                  COMPANY_ID,
-                                                 PACKET_ID,
+                                                 BROADCAST_PACKET_ID,
                                                  formatted_uuid,
                                                  "00 00 00 00 c5 00")
     stopargs = "sudo hciconfig {} noleadv".format(HCI_DEVICE).split(" ")
