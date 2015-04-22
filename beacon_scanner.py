@@ -24,7 +24,7 @@ class BeaconScanner:
         self.dump = subprocess.Popen(dumpargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.uuid_dict = {}
         self.sent_uuids = {}
-        self.last_rssi_values = [-70]*NUMBER_LAST_RSSI_VALUES
+        self.last_rssi_values = {}
         self.settings_dict = {}
         self.uuid_lock = threading.Lock()
         self.settings_lock = threading.Lock()
@@ -55,11 +55,14 @@ class BeaconScanner:
     def get_dict(self):
         return self.uuid_dict
     
-    def get_average_rssi(self, new_rssi):
+    def get_average_rssi(self, uuid, new_rssi):
+        if not uuid in self.last_rssi_values:
+            # Initialize RSSI values
+            self.last_rssi_values[uuid] = [-70]*NUMBER_LAST_RSSI_VALUES
         # Update array of last rssi values
-        self.last_rssi_values = [new_rssi] + self.last_rssi_values[:-1]
+        self.last_rssi_values[uuid] = [new_rssi] + self.last_rssi_values[uuid][:-1]
         # Get the average of the last rssi values
-        average_rssi = reduce(lambda x,y: x+y, self.last_rssi_values) / float(len(self.last_rssi_values))
+        average_rssi = reduce(lambda x,y: x+y, self.last_rssi_values[uuid]) / float(len(self.last_rssi_values[uuid]))
         return int(average_rssi)
 
     def receive_packets(self):
@@ -81,7 +84,7 @@ class BeaconScanner:
                             uuid = cur_packet[uuid_start:uuid_end].replace(" ", "")
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
-                            average_rssi = self.get_average_rssi(rssi)
+                            average_rssi = self.get_average_rssi(uuid, rssi)
                             # send if beyond threshold
                             if uuid in self.uuid_dict and \
                                average_rssi <= self.uuid_dict[uuid] * (1 - RSSI_THRESHOLD) and \
