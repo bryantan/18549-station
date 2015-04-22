@@ -127,14 +127,18 @@ class BeaconScanner:
                                                  .decode("hex")
                         server_ip = "http://{}:3000".format(server_ip)
                         # write new IP into constants file
-                        f = open(constants.CONSTANTS_FILENAME, 'w+', os.O_NONBLOCK)
+                        f = open(constants.CONSTANTS_FILENAME, 'r+', os.O_NONBLOCK)
                         constants_content = f.read()
-                        constants_content.replace(constants.WEBSERVER_IP,
-                                                  server_ip)
+                        constants_content = constants_content.replace(constants.WEBSERVER_IP,
+                                                                      server_ip)
+                        f.seek(0)
                         f.write(constants_content)
+                        f.truncate()
                         f.close()
+
                         # update variable
                         constants.WEBSERVER_IP = server_ip
+                        print("Updating IP to: " + server_ip)
 
                     # start tracking of new packet
                     cur_packet = line.strip()
