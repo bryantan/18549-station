@@ -46,6 +46,19 @@ def set_id():
     return "set"
 
 
+@app.route('/broadcast-ip', methods=['GET'])
+def set_ip():
+    server_ip = "http://%s:3000" % request.remote_addr
+    f = open(CONSTANTS_FILENAME, 'r+', os.O_NONBLOCK)
+    constants_content = f.read()
+    constants_content = constants_content.replace(WEBSERVER_IP, server_ip)
+    f.seek(0)
+    f.write(constants_content)
+    f.truncate()
+    f.close()
+    return "set"
+
+
 @app.route('/broadcast-uuid', methods=['POST'])
 def broadcast_uuid():
     uuid = request.form['uuid']
