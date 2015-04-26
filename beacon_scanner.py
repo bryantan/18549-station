@@ -246,6 +246,10 @@ class BeaconScanner:
         print "Received IP Address from BLE: " + server_ip
         if server_ip != self.ip_address:
             self.ip_address = server_ip
+            f = open(constants.IP_ADDRESS_FILENAME, 'w', os.O_NONBLOCK)
+            f.write(server_ip)
+            f.flush()
+            f.close()
 
     def get_setting(self, key):
         # safely get setting with locking
