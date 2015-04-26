@@ -9,7 +9,7 @@ from constants import *
 # from beacon_scanner import BeaconScanner
 
 app = Flask(__name__)
-
+globals = {"WEBSERVER_IP" : ""}
 
 # @app.route('/get_beacons')
 # def get_beacons():
@@ -49,13 +49,12 @@ def set_id():
 @app.route('/broadcast-ip', methods=['GET'])
 def set_ip():
     server_ip = "http://%s:3000" % request.remote_addr
-    f = open(CONSTANTS_FILENAME, 'r+', os.O_NONBLOCK)
-    constants_content = f.read()
-    constants_content = constants_content.replace(WEBSERVER_IP, server_ip)
-    f.seek(0)
-    f.write(constants_content)
-    f.truncate()
-    f.close()
+    if server_ip != globals["WEBSERVER_IP"]:
+        globals["WEBSERVER_IP"] = server_ip
+        f = open(IP_ADDRESS_FILENAME, 'w', os.O_NONBLOCK)
+        f.write(server_ip)
+        f.flush()
+        f.close()
     return "set"
 
 

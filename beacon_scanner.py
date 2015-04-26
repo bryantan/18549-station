@@ -35,6 +35,7 @@ class BeaconScanner:
         self.settings_lock = threading.Lock()
         self.settings_last_updated = None
         self.id = None
+        self.ip_address = None
 
         # kill processes on exiting of program
         def signal_handler(signal, frame):
@@ -103,16 +104,18 @@ class BeaconScanner:
                                 # send post request to server
                                 json_dict = json.dumps({uuid: average_rssi})
                                 self.read_latest_id()
+                                self.read_latest_ip_address()
                                 if self.id is None:
                                     data = {'data': json_dict}
                                 else:
                                     data = {'id': self.id,
                                             'data': json_dict}
-                                print "POST data: " + str(data)
-                                try:
-                                    requests.post(constants.WEBSERVER_IP + '/newData', data=data)
-                                except Exception as e:
-                                    print "Unable to post data: " + str(e)
+                                if self.ip_address:
+                                    print "POST data to " + self.ip_address + " : " + str(data)
+                                    try:
+                                        requests.post(self.ip_address + '/newData', data=data)
+                                    except Exception as e:
+                                        print "Unable to post data: " + str(e)
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
 
                     # look for IP broadcast packet
@@ -127,19 +130,7 @@ class BeaconScanner:
                         server_ip = server_ip_str.replace(" ", "") \
                                                  .decode("hex")
                         server_ip = "http://{}:3000".format(server_ip)
-                        # write new IP into constants file
-                        f = open(constants.CONSTANTS_FILENAME, 'r+', os.O_NONBLOCK)
-                        constants_content = f.read()
-                        constants_content = constants_content.replace(constants.WEBSERVER_IP,
-                                                                      server_ip)
-                        f.seek(0)
-                        f.write(constants_content)
-                        f.truncate()
-                        f.close()
-
-                        # update variable
-                        constants.WEBSERVER_IP = server_ip
-                        print("Updating IP to: " + server_ip)
+                        self.save_latest_ip_address(server_ip)
 
                     # start tracking of new packet
                     cur_packet = line.strip()
@@ -174,12 +165,14 @@ class BeaconScanner:
             # update sent uuids
             self.sent_uuids = new_sent
             self.read_latest_id()
-            if self.id is None:
-                data = {'data': json_dict}
-            else:
-                data = {'id': self.id, 'data': json_dict}
-            print "POST data: " + str(data)
-            requests.post(constants.WEBSERVER_IP + '/newData', data=data)
+            self.read_latest_ip_address()
+            if self.ip_address:
+                if self.id is None:
+                    data = {'data': json_dict}
+                else:
+                    data = {'id': self.id, 'data': json_dict}
+                print "POST data: " + str(data)
+                requests.post(self.ip_address + '/newData', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
@@ -187,9 +180,11 @@ class BeaconScanner:
         threading.Timer(constants.SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
         try:
             self.read_latest_id()
-            if self.id is not None:
-                data = {'id': self.id}
-                requests.post(constants.WEBSERVER_IP + '/sendHeartbeat', data=data)
+            self.read_latest_ip_address()
+            if self.ip_address:
+                if self.id is not None:
+                    data = {'id': self.id}
+                    requests.post(self.ip_address + '/sendHeartbeat', data=data)
         except Exception as e:
             print "Unable to post data: " + str(e)
 
@@ -233,10 +228,24 @@ class BeaconScanner:
             f = open(constants.ID_FILENAME, 'r', os.O_NONBLOCK)
             id_object = json.loads(f.read())
             self.id = id_object['id']
+            f.close()
         except Exception as e:
             print "Unable to load ID: " + str(e)
-        finally:
+
+    def read_latest_ip_address(self):
+        try:
+            # read ID from file and update the ID variable
+            f = open(constants.IP_ADDRESS_FILENAME, 'r', os.O_NONBLOCK)
+            self.ip_address = f.read()
             f.close()
+        except Exception as e:
+            if not self.ip_address:
+                print "No IP Address: " + str(e)
+
+    def save_latest_ip_address(self, server_ip):
+        print "Received IP Address from BLE: " + server_ip
+        if server_ip != self.ip_address:
+            self.ip_address = server_ip
 
     def get_setting(self, key):
         # safely get setting with locking
