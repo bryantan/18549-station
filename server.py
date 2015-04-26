@@ -37,7 +37,7 @@ def set_settings():
 @app.route('/set-id', methods=['POST'])
 def set_id():
     settings = json.loads(request.form['data'])
-    print settings
+    print "Received new ID: " + settings["id"]
     # TODO: check settings dict
     f = open(ID_FILENAME, 'w', os.O_NONBLOCK)
     f.write(json.dumps(settings))

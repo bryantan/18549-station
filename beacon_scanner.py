@@ -49,13 +49,13 @@ class BeaconScanner:
         rp_thread = threading.Thread(target=self.receive_packets, args=())
         # sp_thread = threading.Thread(target=self.send_packets, args=())
         sh_thread = threading.Thread(target=self.send_heartbeat, args=())
-        us_thread = threading.Thread(target=self.update_settings, args=())
-        ui_thread = threading.Thread(target=self.update_id, args=())
+        # us_thread = threading.Thread(target=self.update_settings, args=())
+        # ui_thread = threading.Thread(target=self.update_id, args=())
         rp_thread.start()
         # sp_thread.start()
         sh_thread.start()
-        us_thread.start()
-        ui_thread.start()
+        # us_thread.start()
+        # ui_thread.start()
 
     def get_dict(self):
         return self.uuid_dict
@@ -96,19 +96,20 @@ class BeaconScanner:
                                average_rssi >= self.uuid_dict[uuid] * (1 + constants.RSSI_THRESHOLD):
                                 pass
                             else:
+                                # lock for thread safety
+                                self.uuid_lock.acquire()
+                                self.uuid_dict[uuid] = average_rssi
+                                self.uuid_lock.release()
+                                # send post request to server
+                                json_dict = json.dumps({uuid: average_rssi})
+                                self.read_latest_id()
+                                if self.id is None:
+                                    data = {'data': json_dict}
+                                else:
+                                    data = {'id': self.id,
+                                            'data': json_dict}
+                                print "POST data: " + str(data)
                                 try:
-                                    # lock for thread safety
-                                    self.uuid_lock.acquire()
-                                    self.uuid_dict[uuid] = average_rssi
-                                    self.uuid_lock.release()
-                                    # send post request to server
-                                    json_dict = json.dumps({uuid: average_rssi})
-                                    if self.id is None:
-                                        data = {'data': json_dict}
-                                    else:
-                                        data = {'id': self.id,
-                                                'data': json_dict}
-                                    print "POST data: " + str(data)
                                     requests.post(constants.WEBSERVER_IP + '/newData', data=data)
                                 except Exception as e:
                                     print "Unable to post data: " + str(e)
@@ -172,6 +173,7 @@ class BeaconScanner:
             json_dict = json.dumps(new_sent)
             # update sent uuids
             self.sent_uuids = new_sent
+            self.read_latest_id()
             if self.id is None:
                 data = {'data': json_dict}
             else:
@@ -184,6 +186,7 @@ class BeaconScanner:
     def send_heartbeat(self):
         threading.Timer(constants.SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
         try:
+            self.read_latest_id()
             if self.id is not None:
                 data = {'id': self.id}
                 requests.post(constants.WEBSERVER_IP + '/sendHeartbeat', data=data)
@@ -223,6 +226,17 @@ class BeaconScanner:
             print "New ID: " + str(self.id)
         except Exception as e:
             print "Unable to load ID: " + str(e)
+
+    def read_latest_id(self):
+        try:
+            # read ID from file and update the ID variable
+            f = open(constants.ID_FILENAME, 'r', os.O_NONBLOCK)
+            id_object = json.loads(f.read())
+            self.id = id_object['id']
+        except Exception as e:
+            print "Unable to load ID: " + str(e)
+        finally:
+            f.close()
 
     def get_setting(self, key):
         # safely get setting with locking
