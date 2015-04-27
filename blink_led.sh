@@ -1,0 +1,10 @@
+while true;
+do echo 255 > /sys/class/leds/beaglebone\:green\:usr1/brightness;
+echo 255 > /sys/class/leds/beaglebone\:green\:usr2/brightness;
+echo 255 > /sys/class/leds/beaglebone\:green\:usr3/brightness;
+sleep 1;
+echo 0 > /sys/class/leds/beaglebone\:green\:usr1/brightness;
+echo 0 > /sys/class/leds/beaglebone\:green\:usr2/brightness;
+echo 0 > /sys/class/leds/beaglebone\:green\:usr3/brightness;
+sleep 1;
+done;

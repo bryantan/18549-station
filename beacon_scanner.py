@@ -57,6 +57,7 @@ class BeaconScanner:
         sh_thread.start()
         # us_thread.start()
         # ui_thread.start()
+        os.system('./blink_led.sh&')
 
     def get_dict(self):
         return self.uuid_dict
