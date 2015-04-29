@@ -1,7 +1,9 @@
-CONSTANTS_FILENAME = "constants.py"
-SETTINGS_FILENAME = "settings.conf"
-ID_FILENAME = "id.conf"
-IP_ADDRESS_FILENAME = "ip_address.conf"
+BASE_DIR = "/root/station/"
+
+CONSTANTS_FILENAME = BASE_DIR + "constants.py"
+SETTINGS_FILENAME = BASE_DIR + "settings.conf"
+ID_FILENAME = BASE_DIR + "id.conf"
+IP_ADDRESS_FILENAME = BASE_DIR + "ip_address.conf"
 IBEACON_ID = "1E 02 01 06 1A FF 4C 00 02 15"
 
 SEND_PACKET_PERIOD = 5.0
