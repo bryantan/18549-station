@@ -180,6 +180,14 @@ class BeaconScanner:
     def send_heartbeat(self):
         threading.Timer(constants.SEND_HEARTBEAT_PERIOD, self.send_heartbeat).start()
         try:
+            # get latest IP from hosted site
+            r = requests.get('http://placeholder-ipupdater.meteor.com/get-ip')
+            ip_address = json.loads(r.json())['ip']
+            self.save_latest_ip_address(ip_address)
+        except Exception as e:
+            print "Unable to get IP from webapp: " + str(e)
+
+        try:
             self.read_latest_id()
             self.read_latest_ip_address()
             if self.ip_address:
