@@ -6,6 +6,7 @@ import signal
 import json
 import sys
 import os
+import time
 
 import constants
 
@@ -57,8 +58,10 @@ class BeaconScanner:
         sh_thread.start()
         # us_thread.start()
         # ui_thread.start()
-        os.system('./blink_led.sh&')
-
+        #while(1):
+        os.system('sudo /root/station/blink_led.sh')
+         #   time.sleep(1)
+        
     def get_dict(self):
         return self.uuid_dict
 
@@ -182,7 +185,7 @@ class BeaconScanner:
         try:
             # get latest IP from hosted site
             r = requests.get('http://placeholder-ipupdater.meteor.com/get-ip')
-            ip_address = json.loads(r.json())['ip']
+            ip_address = r.json()['ip']
             self.save_latest_ip_address(ip_address)
         except Exception as e:
             print "Unable to get IP from webapp: " + str(e)
