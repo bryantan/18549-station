@@ -6,6 +6,7 @@ import signal
 import json
 import sys
 import os
+import time
 
 import constants
 
@@ -57,8 +58,10 @@ class BeaconScanner:
         sh_thread.start()
         # us_thread.start()
         # ui_thread.start()
-        os.system('./blink_led.sh&')
-
+        #while(1):
+        os.system('sudo /root/station/blink_led.sh')
+         #   time.sleep(1)
+        
     def get_dict(self):
         return self.uuid_dict
 
