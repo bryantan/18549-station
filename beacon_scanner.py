@@ -99,12 +99,12 @@ class BeaconScanner:
                             # add to uuid_dict to be sent by heartbeat, lock for thread safety
                             # use averaging in send_packets instead of get_average_rssi
                             # self.uuid_lock.acquire()
-                            if uuid in self.uuid_dict[uuid]:
+                            if uuid in self.uuid_dict:
                                 self.uuid_dict[uuid] += rssi
                             else:
                                 self.uuid_dict[uuid] = rssi
 
-                            if uuid in self.recv_count[uuid]:
+                            if uuid in self.recv_count:
                                 self.recv_count[uuid] += 1
                             else:
                                 self.recv_count[uuid] = 1
@@ -179,7 +179,7 @@ class BeaconScanner:
             #     return
 
             # average out values over time period
-            for uuid, rssi_sum in new_sent.itermitems():
+            for uuid, rssi_sum in new_sent.iteritems():
                 if uuid in new_count and new_count[uuid] != 0:
                     new_sent[uuid] = rssi_sum / new_count[uuid]
             # dump received packets and send them to webserver
@@ -273,7 +273,7 @@ class BeaconScanner:
                 print "No IP Address: " + str(e)
 
     def save_latest_ip_address(self, server_ip):
-        print "Received IP Address from BLE: " + server_ip
+        print "Saving Latest IP Address: " + server_ip
         if server_ip != self.ip_address:
             self.ip_address = server_ip
             f = open(constants.IP_ADDRESS_FILENAME, 'w', os.O_NONBLOCK)
