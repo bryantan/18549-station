@@ -100,10 +100,12 @@ class BeaconScanner:
                             self.uuid_dict[uuid] = average_rssi
                             self.uuid_lock.release()
                             # send if beyond threshold
-                            if average_rssi <= self.uuid_dict[uuid] * (1 - constants.RSSI_THRESHOLD) and \
-                               average_rssi >= self.uuid_dict[uuid] * (1 + constants.RSSI_THRESHOLD):
+                            if uuid in self.sent_uuids and \
+                               average_rssi <= self.sent_uuids[uuid] * (1 - constants.RSSI_THRESHOLD) and \
+                               average_rssi >= self.sent_uuids[uuid] * (1 + constants.RSSI_THRESHOLD):
                                 pass
                             else:
+                                self.sent_uuids[uuid] = average_rssi
                                 # send post request to server
                                 json_dict = json.dumps({uuid: average_rssi})
                                 self.read_latest_id()
@@ -166,7 +168,7 @@ class BeaconScanner:
             # dump received packets and send them to webserver
             json_dict = json.dumps(new_sent)
             # update sent uuids
-            self.sent_uuids = new_sent
+            # self.sent_uuids = new_sent
             self.read_latest_id()
             self.read_latest_ip_address()
             if self.ip_address:
