@@ -29,6 +29,7 @@ class BeaconScanner:
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
         self.uuid_dict = {}
+        self.recv_count = {}
         self.sent_uuids = {}
         self.last_rssi_values = {}
         self.settings_dict = {}
@@ -94,33 +95,42 @@ class BeaconScanner:
                             uuid = cur_packet[uuid_start:uuid_end].replace(" ", "")
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
-                            average_rssi = self.get_average_rssi(uuid, rssi)
+                            # average_rssi = self.get_average_rssi(uuid, rssi)
                             # add to uuid_dict to be sent by heartbeat, lock for thread safety
-                            self.uuid_lock.acquire()
-                            self.uuid_dict[uuid] = average_rssi
-                            self.uuid_lock.release()
-                            # send if beyond threshold
-                            if uuid in self.sent_uuids and \
-                               average_rssi <= self.sent_uuids[uuid] * (1 - constants.RSSI_THRESHOLD) and \
-                               average_rssi >= self.sent_uuids[uuid] * (1 + constants.RSSI_THRESHOLD):
-                                pass
+                            # use averaging in send_packets instead of get_average_rssi
+                            # self.uuid_lock.acquire()
+                            if uuid in self.uuid_dict[uuid]:
+                                self.uuid_dict[uuid] += rssi
                             else:
-                                self.sent_uuids[uuid] = average_rssi
-                                # send post request to server
-                                json_dict = json.dumps({uuid: average_rssi})
-                                self.read_latest_id()
-                                self.read_latest_ip_address()
-                                if self.id is None:
-                                    data = {'data': json_dict}
-                                else:
-                                    data = {'id': self.id,
-                                            'data': json_dict}
-                                if self.ip_address:
-                                    print "POST data to " + self.ip_address + " : " + str(data)
-                                    try:
-                                        requests.post(self.ip_address + '/newData', data=data)
-                                    except Exception as e:
-                                        print "Unable to post data: " + str(e)
+                                self.uuid_dict[uuid] = rssi
+
+                            if uuid in self.recv_count[uuid]:
+                                self.recv_count[uuid] += 1
+                            else:
+                                self.recv_count[uuid] = 1
+                            # self.uuid_lock.release()
+                            # send if beyond threshold
+                            # if uuid in self.sent_uuids and \
+                            #    average_rssi <= self.sent_uuids[uuid] * (1 - constants.RSSI_THRESHOLD) and \
+                            #    average_rssi >= self.sent_uuids[uuid] * (1 + constants.RSSI_THRESHOLD):
+                            #     pass
+                            # else:
+                            #     self.sent_uuids[uuid] = average_rssi
+                            #     # send post request to server
+                            #     json_dict = json.dumps({uuid: average_rssi})
+                            #     self.read_latest_id()
+                            #     self.read_latest_ip_address()
+                            #     if self.id is None:
+                            #         data = {'data': json_dict}
+                            #     else:
+                            #         data = {'id': self.id,
+                            #                 'data': json_dict}
+                            #     if self.ip_address:
+                            #         print "POST data to " + self.ip_address + " : " + str(data)
+                            #         try:
+                            #             requests.post(self.ip_address + '/newData', data=data)
+                            #         except Exception as e:
+                            #             print "Unable to post data: " + str(e)
                             # print("UUID: {}, RSSI: {}".format(uuid, rssi))
 
                     # look for IP broadcast packet
@@ -152,7 +162,8 @@ class BeaconScanner:
         try:
             # remove values in the dict that are within the threshold range
             new_sent = self.uuid_dict.copy()
-            self.uuid_lock.acquire()
+            new_count = self.recv_count.copy()
+            # self.uuid_lock.acquire()
             # for uuid, rssi in self.uuid_dict.iteritems():
             #     print str(uuid) + str(rssi)
             #     if uuid in self.sent_uuids and \
@@ -161,10 +172,16 @@ class BeaconScanner:
             #         new_sent.pop(uuid, None)
             # clear dict after sending to ensure fresh values
             self.uuid_dict.clear()
-            self.uuid_lock.release()
+            self.recv_count.clear()
+            # self.uuid_lock.release()
             # do not send if there are no updates
             # if len(new_sent) == 0:
             #     return
+
+            # average out values over time period
+            for uuid, rssi_sum in new_sent.itermitems():
+                if uuid in new_count and new_count[uuid] != 0:
+                    new_sent[uuid] = rssi_sum / new_count[uuid]
             # dump received packets and send them to webserver
             json_dict = json.dumps(new_sent)
             # update sent uuids
