@@ -100,8 +100,7 @@ class BeaconScanner:
                             self.uuid_dict[uuid] = average_rssi
                             self.uuid_lock.release()
                             # send if beyond threshold
-                            if uuid in self.uuid_dict and \
-                               average_rssi <= self.uuid_dict[uuid] * (1 - constants.RSSI_THRESHOLD) and \
+                            if average_rssi <= self.uuid_dict[uuid] * (1 - constants.RSSI_THRESHOLD) and \
                                average_rssi >= self.uuid_dict[uuid] * (1 + constants.RSSI_THRESHOLD):
                                 pass
                             else:
