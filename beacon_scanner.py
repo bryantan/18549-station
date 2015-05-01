@@ -49,12 +49,12 @@ class BeaconScanner:
         # start new threads to receive packets,
         # send packets, and update settings
         rp_thread = threading.Thread(target=self.receive_packets, args=())
-        # sp_thread = threading.Thread(target=self.send_packets, args=())
+        sp_thread = threading.Thread(target=self.send_packets, args=())
         sh_thread = threading.Thread(target=self.send_heartbeat, args=())
         # us_thread = threading.Thread(target=self.update_settings, args=())
         # ui_thread = threading.Thread(target=self.update_id, args=())
         rp_thread.start()
-        # sp_thread.start()
+        sp_thread.start()
         sh_thread.start()
         # us_thread.start()
         # ui_thread.start()
@@ -152,18 +152,18 @@ class BeaconScanner:
             # remove values in the dict that are within the threshold range
             new_sent = self.uuid_dict.copy()
             self.uuid_lock.acquire()
-            for uuid, rssi in self.uuid_dict.iteritems():
-                print str(uuid) + str(rssi)
-                if uuid in self.sent_uuids and \
-                   rssi <= self.sent_uuids[uuid] + constants.RSSI_THRESHOLD and \
-                   rssi >= self.sent_uuids[uuid] - constants.RSSI_THRESHOLD:
-                    new_sent.pop(uuid, None)
+            # for uuid, rssi in self.uuid_dict.iteritems():
+            #     print str(uuid) + str(rssi)
+            #     if uuid in self.sent_uuids and \
+            #        rssi <= self.sent_uuids[uuid] + constants.RSSI_THRESHOLD and \
+            #        rssi >= self.sent_uuids[uuid] - constants.RSSI_THRESHOLD:
+            #         new_sent.pop(uuid, None)
             # clear dict after sending to ensure fresh values
             self.uuid_dict.clear()
             self.uuid_lock.release()
             # do not send if there are no updates
-            if len(new_sent) == 0:
-                return
+            # if len(new_sent) == 0:
+            #     return
             # dump received packets and send them to webserver
             json_dict = json.dumps(new_sent)
             # update sent uuids
