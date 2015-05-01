@@ -95,16 +95,16 @@ class BeaconScanner:
                             # last byte of packet contains RSSI information
                             rssi = int(cur_packet[-2:], 16) - 256
                             average_rssi = self.get_average_rssi(uuid, rssi)
+                            # add to uuid_dict to be sent by heartbeat, lock for thread safety
+                            self.uuid_lock.acquire()
+                            self.uuid_dict[uuid] = average_rssi
+                            self.uuid_lock.release()
                             # send if beyond threshold
                             if uuid in self.uuid_dict and \
                                average_rssi <= self.uuid_dict[uuid] * (1 - constants.RSSI_THRESHOLD) and \
                                average_rssi >= self.uuid_dict[uuid] * (1 + constants.RSSI_THRESHOLD):
                                 pass
                             else:
-                                # lock for thread safety
-                                self.uuid_lock.acquire()
-                                self.uuid_dict[uuid] = average_rssi
-                                self.uuid_lock.release()
                                 # send post request to server
                                 json_dict = json.dumps({uuid: average_rssi})
                                 self.read_latest_id()
